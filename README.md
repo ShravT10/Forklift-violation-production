@@ -17,4 +17,4 @@ Command to capture frame from feed
 
 ```
 python dataset-maker/snap.py --rtsp "rtsps://admin:Kion%402024@10.102.10.230:554/video/live?channel=1&subtype=1" --save_dir "dataset-maker/dataset" --duration 5 --save_interval 1 
-```
+```saasd
