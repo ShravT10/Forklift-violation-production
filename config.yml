@@ -1,0 +1,124 @@
+# NanoDet-Plus-m 416 — custom dataset config
+# Edit the CHANGE-ME sections below before training.
+
+save_dir: workspace/nanodet-plus-m_416_custom
+model:
+  weight_averager:
+    name: ExpMovingAverager
+    decay: 0.9998
+  arch:
+    name: NanoDetPlus
+    detach_epoch: 10
+    backbone:
+      name: ShuffleNetV2
+      model_size: 1.0x
+      out_stages: [2,3,4]
+      activation: LeakyReLU
+    fpn:
+      name: GhostPAN
+      in_channels: [116, 232, 464]
+      out_channels: 96
+      kernel_size: 5
+      num_extra_level: 1
+      use_depthwise: True
+      activation: LeakyReLU
+    head:
+      name: NanoDetPlusHead
+      num_classes: 1            # CHANGE-ME: number of your classes
+      input_channel: 96
+      feat_channels: 96
+      stacked_convs: 2
+      kernel_size: 5
+      strides: [8, 16, 32, 64]
+      activation: LeakyReLU
+      reg_max: 7
+      norm_cfg:
+        type: BN
+      loss:
+        loss_qfl:
+          name: QualityFocalLoss
+          use_sigmoid: True
+          beta: 2.0
+          loss_weight: 1.0
+        loss_dfl:
+          name: DistributionFocalLoss
+          loss_weight: 0.25
+        loss_bbox:
+          name: GIoULoss
+          loss_weight: 2.0
+    # Auxiliary head used only during training to speed convergence
+    aux_head:
+      name: SimpleConvHead
+      num_classes: 1             # CHANGE-ME: same as above
+      input_channel: 192
+      feat_channels: 192
+      stacked_convs: 4
+      strides: [8, 16, 32, 64]
+      activation: LeakyReLU
+      reg_max: 7
+
+class_names: &class_names ['Forklift']   # CHANGE-ME: your class names, in COCO category order
+
+data:
+  train:
+    name: CocoDataset
+    img_path: Dataset/images/train     # CHANGE-ME if path differs
+    ann_path: Dataset/labels/train/train.json
+    input_size: [416,416]
+    keep_ratio: False
+    pipeline:
+      perspective: 0.0
+      scale: [0.6, 1.4]
+      stretch: [[1, 1], [1, 1]]
+      rotation: 0
+      shear: 0
+      translate: 0.2
+      flip: 0.5
+      brightness: 0.2
+      contrast: [0.6, 1.4]
+      saturation: [0.5, 1.2]
+      normalize: [[103.53, 116.28, 123.675], [57.375, 57.12, 58.395]]
+  val:
+    name: CocoDataset
+    img_path: Dataset/images/val      # CHANGE-ME if path differs
+    ann_path: Dataset/labels/val/val.json
+    input_size: [416,416]
+    keep_ratio: False
+    pipeline:
+      normalize: [[103.53, 116.28, 123.675], [57.375, 57.12, 58.395]]
+
+device:
+  gpu_ids: [0]
+  workers_per_gpu: 4
+  batchsize_per_gpu: 16      # lower this (e.g. 8-16) if you hit out-of-memory
+  precision: 32
+
+schedule:
+  load_model: nanodet/pretrained_models/nanodet-plus-m_416_checkpoint.ckpt
+  optimizer:
+    name: AdamW
+    lr: 0.001
+    weight_decay: 0.05
+  warmup:
+    name: linear
+    steps: 300
+    ratio: 0.0001
+  total_epochs: 120           # 2k images is small — 100-150 epochs is reasonable
+  lr_schedule:
+    name: CosineAnnealingLR
+    T_max: 120
+    eta_min: 0.00005
+  val_intervals: 5
+
+grad_clip: 35
+
+evaluator:
+  name: CocoDetectionEvaluator
+  save_key: mAP
+
+log:
+  interval: 20
+
+# Recommended: start from official pretrained weights for transfer learning.
+# Download: https://github.com/RangiLyu/nanodet/releases
+# Then set in your train command: --load_from /path/to/nanodet-plus-m_416_checkpoint.pth
