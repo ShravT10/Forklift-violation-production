@@ -1,7 +1,7 @@
 import cv2, numpy as np
 
-IMG = "snapshots\\image2.jpg"   # image/frame path
-OUT = "exc_points.txt"         # output filename (note: not valid JSON)
+IMG = "snapshots\\i1.jpg"   # image/frame path
+OUT = "Regions/exc_points.txt"         # output filename (note: not valid JSON)
 CLOSE = True                    # False=polyline, True=polygon
 
 pts = []

@@ -1,3 +1,6 @@
 .venv
 .env
 README.md
+camera-ips
+dataset-maker/dataset
+nanodet-v1
