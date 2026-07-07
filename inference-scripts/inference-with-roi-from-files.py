@@ -11,6 +11,28 @@ import ncnn
 import numpy as np
 import yaml
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+
+
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+        if text in {"0", "false", "no", "n", "off", ""}:
+            return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
+
 
 class _DotDict:
     """Recursive dot-access wrapper around a plain dict (mirrors CfgNode behaviour)."""
@@ -53,10 +75,16 @@ class SimpleLogger:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="NanoDet NCNN RTSP inference with ROI overlays")
-    parser.add_argument("--config", required=True, help="NanoDet config .yml")
-    parser.add_argument("--param", required=True, help="path to NCNN .param file")
-    parser.add_argument("--bin", dest="bin_path", required=True, help="path to NCNN .bin file")
-    parser.add_argument("--rtsp", required=True, help="RTSP stream URL")
+    default_config = os.environ.get('config_file') or str(ROOT_DIR / 'config.yml')
+    default_param = os.environ.get('param') or str(ROOT_DIR / 'nanodet-v1' / 'nanodet_v1.ncnn.param')
+    default_bin = os.environ.get('bin') or str(ROOT_DIR / 'nanodet-v1' / 'nanodet_v1.ncnn.bin')
+    default_area = str(ROOT_DIR / 'Regions' / 'area.txt')
+    default_exc = str(ROOT_DIR / 'Regions' / 'exc_points.txt')
+
+    parser.add_argument("--config", default=default_config, help="NanoDet config .yml")
+    parser.add_argument("--param", default=default_param, help="path to NCNN .param file")
+    parser.add_argument("--bin", default=default_bin, dest="bin_path", help="path to NCNN .bin file")
+    parser.add_argument("--rtsp", default=os.environ.get('RTSP_URL'), help="RTSP stream URL")
     parser.add_argument("--input-blob", default=None, help="override NCNN input blob name")
     parser.add_argument(
         "--output-blobs",
@@ -66,7 +94,7 @@ def parse_args():
     parser.add_argument("--score_thres", type=float, default=0.45)
     parser.add_argument("--nms_thres", type=float, default=0.5)
     parser.add_argument("--device", default="cpu", choices=["cpu", "vulkan"], help="NCNN backend")
-    parser.add_argument("--display", action="store_true", help="show OpenCV window")
+    parser.add_argument("--display", nargs="?", const=True, default=None, type=parse_bool, help="show OpenCV window (supports True/False from env or CLI)")
     parser.add_argument("--save_dir", default=None, help="optional directory to save annotated frames periodically")
     parser.add_argument("--save_interval", type=float, default=5.0, help="seconds between saved snapshots")
     parser.add_argument("--reconnect_delay", type=float, default=3.0, help="seconds to wait before reconnecting RTSP stream")
@@ -74,13 +102,18 @@ def parse_args():
     parser.add_argument("--apply_sigmoid", action="store_true", help="apply sigmoid to class scores manually")
     parser.add_argument(
         "--violation_duration",
+        default=os.environ.get('violation_duration'),
         type=float,
-        default=3.0,
         help="seconds a forklift must remain outside the safe zone before alarm triggers",
     )
-    parser.add_argument("--area", default="Regions/area.txt", help="main ROI points file")
-    parser.add_argument("--exc", default="Regions/exc_points.txt", help="exclusion ROI points file")
-    return parser.parse_args()
+    parser.add_argument("--area", default=default_area, help="main ROI points file")
+    parser.add_argument("--exc", default=default_exc, help="exclusion ROI points file")
+
+    args = parser.parse_args()
+    if args.display is None:
+        env_display = os.environ.get("display") or os.environ.get("DISPLAY")
+        args.display = parse_bool(env_display) if env_display is not None else False
+    return args
 
 
 def safe_get(obj, path, default=None):
@@ -564,9 +597,10 @@ def main():
             prev_time = now
 
             if not args.quiet:
-                logger.log(f"FPS:{fps:.1f} | {summarize_detections(dets, cfg.class_names, args.score_thres)}")
+                timestamp = time.strftime("%H:%M:%S")
+                logger.log(f"[{timestamp}]FPS:{fps:.1f} | {summarize_detections(dets, cfg.class_names, args.score_thres)}")
                 for fk in forklift_data:
-                    logger.log(f"  ground_point={fk['ground_point']}  status={fk['status']}")
+                    logger.log(f"[{timestamp}]  ground_point={fk['ground_point']}  status={fk['status']}")
 
             if needs_rendered:
                 out_frame = frame.copy()
