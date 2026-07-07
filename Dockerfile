@@ -28,4 +28,4 @@ COPY . .
 RUN useradd --create-home --shell /bin/bash appuser
 USER appuser
 
-CMD ["python3","inference-scripts/inference-with-roi-from-files.py","--config","/app/config.yml","--param","/app/nanodet-v1/nanodet_v1.ncnn.param","--bin","/app/nanodet-v1/nanodet_v1.ncnn.bin","--device","cpu"]
+CMD ["python3","inference-scripts/inference-with-roi-from-files.py","--device","cpu"]
