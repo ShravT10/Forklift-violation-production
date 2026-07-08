@@ -1,9 +1,13 @@
 import argparse
 from pathlib import Path
+import os 
 
 import cv2
 import numpy as np
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DEFAULT_OUT = Path("Regions/exc_points.txt")
 
@@ -106,7 +110,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Draw ROI points on a live RTSP stream")
     parser.add_argument(
         "--source",
-        default="rtsp://YOUR_RTSP_URL",
+        default=os.environ.get("RTSP_URL"),
         help="RTSP URL, webcam index, or video file path",
     )
     parser.add_argument(
