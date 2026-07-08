@@ -80,6 +80,7 @@ def parse_args():
     default_bin = os.environ.get('bin') or str(ROOT_DIR / 'nanodet-v1' / 'nanodet_v1.ncnn.bin')
     default_area = str(ROOT_DIR / 'Regions' / 'area.txt')
     default_exc = str(ROOT_DIR / 'Regions' / 'exc_points.txt')
+    default_score = os.environ.get('score',0.45)
 
     parser.add_argument("--config", default=default_config, help="NanoDet config .yml")
     parser.add_argument("--param", default=default_param, help="path to NCNN .param file")
@@ -91,7 +92,7 @@ def parse_args():
         default=None,
         help="comma-separated NCNN output blob names; if omitted, auto-detect terminal blobs from .param",
     )
-    parser.add_argument("--score_thres", type=float, default=0.45)
+    parser.add_argument("--score_thres", type=float, default=default_score)
     parser.add_argument("--nms_thres", type=float, default=0.5)
     parser.add_argument("--device", default="cpu", choices=["cpu", "vulkan"], help="NCNN backend")
     parser.add_argument("--display", nargs="?", const=True, default=None, type=parse_bool, help="show OpenCV window (supports True/False from env or CLI)")
@@ -598,7 +599,7 @@ def main():
 
             if not args.quiet:
                 timestamp = time.strftime("%H:%M:%S")
-                logger.log(f"[{timestamp}]FPS:{fps:.1f} | {summarize_detections(dets, cfg.class_names, args.score_thres)}")
+                logger.log(f"[{timestamp}]FPS:{fps:.1f} |  {summarize_detections(dets, cfg.class_names, args.score_thres)}")
                 for fk in forklift_data:
                     logger.log(f"[{timestamp}]  ground_point={fk['ground_point']}  status={fk['status']}")
 
