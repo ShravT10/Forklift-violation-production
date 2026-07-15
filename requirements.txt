@@ -1,5 +1,5 @@
 numpy
-ncnn
 opencv-python-headless
 pyyaml
-dotenv
+python-dotenv
+cuda-python==13.0.0
